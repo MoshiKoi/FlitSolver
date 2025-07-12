@@ -1,5 +1,6 @@
 add_library(Game)
 target_sources(Game PUBLIC FILE_SET CXX_MODULES FILES game.cpp)
+target_link_libraries(Game PRIVATE xxHash::xxhash)
 
 add_library(Evaluator)
 target_sources(Evaluator PUBLIC FILE_SET CXX_MODULES FILES evaluator.cpp)

@@ -1,6 +1,9 @@
 module;
 
+#include <xxhash.h>
+
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <format>
@@ -138,6 +141,7 @@ export class GameState
 
 	void set(std::uint_fast8_t idx, Cell cell)
 	{
+		assert(_board[idx] == Cell::Empty);
 		_board[idx] = cell;
 		for (auto neighbor : neighbors(idx))
 		{
@@ -151,6 +155,8 @@ export class GameState
 			}
 		}
 	}
+
+	std::uint64_t hash() const { return XXH64(_board, num_cells, 12345); }
 
   private:
 	Cell _board[num_cells] = {};
