@@ -1,5 +1,7 @@
 module;
 
+#include <libassert/assert.hpp>
+
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -28,13 +30,13 @@ export class Solver
 	{
 	}
 
-	std::vector<solve_result> solve(Cell player)
+	std::vector<solve_result> solve(Cell player, int depth)
 	{
 		std::vector<solve_result> evaluations;
 		for (Move move : state.get_legal_moves(player))
 		{
 			state.commit(move);
-			evaluations.emplace_back(move, -evaluate(opponent(player), true, 0, -10000, 10000));
+			evaluations.emplace_back(move, -evaluate(opponent(player), true, depth, -100000, 100000));
 			state.uncommit(move);
 		}
 		std::ranges::sort(evaluations, [](auto const &a, auto const &b) { return a.score > b.score; });
@@ -44,13 +46,37 @@ export class Solver
   private:
 	int evaluate(Cell player, bool blue, int depth, int alpha, int beta)
 	{
+		int const original_alpha = alpha;
+		int const original_beta = beta;
 		auto hash = state.hash();
 		auto &entry = get_transposition_entry(hash);
 		if (entry.is_valid and entry.depth > depth)
 		{
-			return entry.score;
+			switch (entry.bound)
+			{
+			case TranspositionBound::Exact: return entry.score;
+			case TranspositionBound::LowerBound:
+				if (entry.score >= beta)
+				{
+					return entry.score;
+				}
+				else
+				{
+					break;
+				}
+			case TranspositionBound::UpperBound:
+				if (entry.score <= alpha)
+				{
+					return entry.score;
+				}
+				else
+				{
+					break;
+				}
+			default: LIBASSERT_UNREACHABLE();
+			}
 		}
-		else if (blue)
+		if (blue)
 		{
 			int total_spawn_score = 0;
 			int count = 0;
@@ -65,7 +91,10 @@ export class Solver
 			int no_spawn_score = evaluate(player, false, depth, alpha, beta);
 			// There is a 1/6 chance of actually having a spawn
 			int score = (5 * no_spawn_score + avg_spawn_score) / 6;
-			insert_transposition(hash, score, depth);
+			entry.is_valid = true;
+			entry.bound = TranspositionBound::Exact;
+			entry.score = score;
+			entry.depth = depth;
 			return score;
 		}
 		else if (depth > 0)
@@ -82,12 +111,24 @@ export class Solver
 				}
 				alpha = std::max(alpha, score);
 			}
-			insert_transposition(hash, score, depth);
+			entry.bound = (score <= original_alpha) //
+				? TranspositionBound::UpperBound
+				: (score >= original_beta) //
+					? TranspositionBound::LowerBound
+					: entry.bound = TranspositionBound::Exact;
+			entry.is_valid = true;
+			entry.score = score;
+			entry.depth = depth;
 			return score;
 		}
 		else
 		{
-			return heuristic(player);
+			int score = heuristic(player);
+			entry.bound = TranspositionBound::Exact;
+			entry.is_valid = true;
+			entry.score = score;
+			entry.depth = 0;
+			return score;
 		}
 	}
 
@@ -108,24 +149,23 @@ export class Solver
 				}
 			}
 		}
-		insert_transposition(state.hash(), score, 0);
-		return score * 100;
+		return score * 1000;
 	}
+
+	enum class TranspositionBound : std::uint8_t
+	{
+		Exact,
+		LowerBound,
+		UpperBound,
+	};
 
 	struct TranspositionTableEntry
 	{
 		bool is_valid;
+		TranspositionBound bound;
 		int depth;
 		int score;
 	};
-
-	void insert_transposition(std::uint64_t key, int score, int depth)
-	{
-		auto &entry = _transposition_table[key % _transposition_table_size];
-		entry.is_valid = true;
-		entry.depth = depth;
-		entry.score = score;
-	}
 
 	TranspositionTableEntry &get_transposition_entry(std::uint64_t key)
 	{

@@ -1,5 +1,6 @@
 module;
 
+#include <chrono>
 #include <iostream>
 #include <map>
 #include <print>
@@ -82,6 +83,23 @@ class Tokenizer
 		}
 	}
 
+	int read_int()
+	{
+		skip_whitespace();
+		if (_ptr == _end)
+		{
+			throw std::runtime_error{"Expected a value"};
+		}
+		int value;
+		auto [ptr, errc] = std::from_chars(_ptr, _end, value);
+		if (errc != std::errc{})
+		{
+			throw std::runtime_error{"Invalid value"};
+		}
+		_ptr = ptr;
+		return value;
+	}
+
   private:
 	void skip_whitespace()
 	{
@@ -158,9 +176,10 @@ class Repl
 	void eval()
 	{
 		Cell color = _tokenizer.read_color();
+		int depth = _tokenizer.read_int();
 		Solver solver{_state};
 		std::println("Move : Evaluation");
-		for (auto [move, score] : solver.solve(color))
+		for (auto [move, score] : solver.solve(color, depth))
 		{
 			std::println("{} : {}", move, score);
 		}
@@ -185,7 +204,10 @@ repl()
 		std::getline(std::cin, line);
 		try
 		{
+			auto begin = std::chrono::steady_clock::now();
 			repl.interpret(line);
+			auto end = std::chrono::steady_clock::now();
+			std::println("Completed in {}", std::chrono::duration_cast<std::chrono::seconds>(end - begin));
 		}
 		catch (std::exception &ex)
 		{
