@@ -207,7 +207,7 @@ repl()
 			auto begin = std::chrono::steady_clock::now();
 			repl.interpret(line);
 			auto end = std::chrono::steady_clock::now();
-			std::println("Completed in {}", std::chrono::duration_cast<std::chrono::seconds>(end - begin));
+			std::println("Completed in {}", std::chrono::duration_cast<std::chrono::milliseconds>(end - begin));
 		}
 		catch (std::exception &ex)
 		{

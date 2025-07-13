@@ -5,6 +5,8 @@ module;
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <random>
+#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -80,7 +82,9 @@ export class Solver
 		{
 			int total_spawn_score = 0;
 			int count = 0;
-			for (auto idx : state.get_possible_spawns())
+			auto possible_spawns = state.get_possible_spawns() | std::ranges::to<std::vector>();
+			std::ranges::shuffle(possible_spawns, _engine);
+			for (auto idx : possible_spawns | std::views::take(10))
 			{
 				state.set(idx, Cell::Blue);
 				total_spawn_score += evaluate(player, false, depth, alpha, beta);
@@ -173,7 +177,7 @@ export class Solver
 	}
 
 	GameState state;
-
+	std::minstd_rand _engine{};
 	std::size_t _transposition_table_size;
 	std::unique_ptr<TranspositionTableEntry[]> _transposition_table;
 };
