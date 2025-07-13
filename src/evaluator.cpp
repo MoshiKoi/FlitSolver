@@ -22,7 +22,7 @@ export struct solve_result
 export class Solver
 {
   public:
-	Solver(GameState state, std::size_t transposition_table_size = 1 << 10)
+	Solver(GameState state, std::size_t transposition_table_size = 1 << 15)
 		: state{std::move(state)}, _transposition_table_size{transposition_table_size},
 		  _transposition_table{std::make_unique<TranspositionTableEntry[]>(_transposition_table_size)}
 	{
@@ -34,7 +34,7 @@ export class Solver
 		for (Move move : state.get_legal_moves(player))
 		{
 			state.commit(move);
-			evaluations.emplace_back(move, -evaluate(opponent(player), true, 1, -10000, 10000));
+			evaluations.emplace_back(move, -evaluate(opponent(player), true, 2, -10000, 10000));
 			state.uncommit(move);
 		}
 		std::ranges::sort(evaluations, [](auto const &a, auto const &b) { return a.score > b.score; });
@@ -44,7 +44,8 @@ export class Solver
   private:
 	int evaluate(Cell player, bool blue, int depth, int alpha, int beta)
 	{
-		auto &entry = get_transposition_entry(state.hash());
+		auto hash = state.hash();
+		auto &entry = get_transposition_entry(hash);
 		if (entry.is_valid and entry.depth > depth)
 		{
 			return entry.score;
@@ -64,7 +65,7 @@ export class Solver
 			int no_spawn_score = evaluate(player, false, depth, alpha, beta);
 			// There is a 1/6 chance of actually having a spawn
 			int score = (5 * no_spawn_score + avg_spawn_score) / 6;
-			insert_transposition(state.hash(), score, depth);
+			insert_transposition(hash, score, depth);
 			return score;
 		}
 		else if (depth > 0)
@@ -73,10 +74,15 @@ export class Solver
 			for (Move move : state.get_legal_moves(player))
 			{
 				state.commit(move);
-				score = std::max(score, -evaluate(opponent(player), true, depth - 1, alpha, beta));
+				score = std::max(score, -evaluate(opponent(player), true, depth - 1, -alpha, -beta));
+				if (score >= beta)
+				{
+					break;
+				}
 				state.uncommit(move);
+				alpha = std::max(alpha, score);
 			}
-			insert_transposition(state.hash(), score, depth);
+			insert_transposition(hash, score, depth);
 			return score;
 		}
 		else

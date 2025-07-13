@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "catch2",
-    "xxhash"
+    "xxhash",
+    "libassert"
   ]
 }

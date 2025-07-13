@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(FLITSOLVER_BUILD_TESTS "Build tests" OFF)
 
 find_package(xxHash CONFIG REQUIRED)
+find_package(libassert CONFIG REQUIRED)
 
 if (FLITSOLVER_BUILD_TESTS)
     find_package(Catch2 3 REQUIRED CONFIG)

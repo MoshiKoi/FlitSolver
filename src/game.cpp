@@ -1,13 +1,15 @@
 module;
 
+#include <libassert/assert.hpp>
 #include <xxhash.h>
 
 #include <algorithm>
-#include <cassert>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <format>
 #include <generator>
+#include <ranges>
 
 export module flit.game;
 
@@ -23,6 +25,8 @@ static_assert(num_cells < 256);
 export constexpr std::uint_fast8_t
 from_rc(std::uint_fast8_t row, std::uint_fast8_t col) noexcept
 {
+	LIBASSERT_DEBUG_ASSERT(row < rows);
+	LIBASSERT_DEBUG_ASSERT(col < cols);
 	return row * cols + col;
 }
 
@@ -49,22 +53,34 @@ export enum class Cell : std::uint_fast8_t {
 export Cell
 opponent(Cell player) noexcept
 {
+	LIBASSERT_DEBUG_ASSERT(player == Cell::Green or player == Cell::Purple);
 	return static_cast<Cell>(std::to_underlying(player) ^ std::uint_fast8_t{0b11});
 }
 
 namespace
 {
 
-std::generator<std::uint_fast8_t>
-neighbors(std::uint_fast8_t idx)
+std::array<std::uint_fast8_t, 4>
+get_neighbors(std::uint_fast8_t idx)
 {
-	co_yield (idx + num_cells - rows) % num_cells;
-	co_yield (idx + rows) % num_cells;
-	co_yield (idx + 1) - rows * !((idx + 1) % cols);
-	co_yield (idx - 1) + rows * !(idx % cols);
+	LIBASSERT_DEBUG_ASSERT(idx < num_cells);
+	return {
+		static_cast<std::uint_fast8_t>((idx + num_cells - rows) % num_cells),
+		static_cast<std::uint_fast8_t>((idx + rows) % num_cells),
+		static_cast<std::uint_fast8_t>((idx + 1) - rows * !((idx + 1) % cols)),
+		static_cast<std::uint_fast8_t>((idx - 1) + rows * !(idx % cols)),
+	};
 }
 
 } // namespace
+
+std::array<std::array<std::uint_fast8_t, 4>, num_cells> const neighbors = []
+{
+	std::remove_cv_t<decltype(neighbors)> result{};
+	std::ranges::copy(
+		std::views::iota(std::uint_fast8_t{0}, num_cells) | std::views::transform(get_neighbors), result.begin());
+	return result;
+}();
 
 export class GameState
 {
@@ -92,6 +108,7 @@ export class GameState
 
 	std::generator<Move> get_legal_moves(Cell player) const
 	{
+		LIBASSERT_DEBUG_ASSERT(player == Cell::Green or player == Cell::Purple);
 		std::uint8_t const *player_cover = player == Cell::Green ? _green_cover : _purple_cover;
 
 		for (std::uint_fast8_t target = 0; target < num_cells; ++target)
@@ -104,7 +121,7 @@ export class GameState
 					{
 						continue;
 					}
-					else if (player_cover[target] == 1 and std::ranges::contains(neighbors(target), source))
+					else if (player_cover[target] == 1 and std::ranges::contains(neighbors[target], source))
 					{
 						continue;
 					}
@@ -125,7 +142,7 @@ export class GameState
 
 	void unset(std::uint_fast8_t idx)
 	{
-		for (auto neighbor : neighbors(idx))
+		for (auto neighbor : neighbors[idx])
 		{
 			switch (_board[idx])
 			{
@@ -141,9 +158,9 @@ export class GameState
 
 	void set(std::uint_fast8_t idx, Cell cell)
 	{
-		assert(_board[idx] == Cell::Empty);
+		LIBASSERT_DEBUG_ASSERT(_board[idx] == Cell::Empty);
 		_board[idx] = cell;
-		for (auto neighbor : neighbors(idx))
+		for (auto neighbor : neighbors[idx])
 		{
 			switch (cell)
 			{
