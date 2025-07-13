@@ -36,6 +36,8 @@ export struct Move
 	std::uint_fast8_t from;
 	/// Cell index of destination
 	std::uint_fast8_t to;
+	// Direction of any blues that will be converted by this move
+	std::uint_fast8_t blue_flags;
 
 	friend bool operator==(Move, Move);
 };
@@ -96,13 +98,36 @@ export class GameState
 
 	void commit(Move move)
 	{
+		LIBASSERT_DEBUG_ASSERT(_board[move.from] != Cell::Empty);
+		LIBASSERT_DEBUG_ASSERT(_board[move.from] != Cell::Blue);
+		LIBASSERT_DEBUG_ASSERT(_board[move.to] == Cell::Empty);
+
 		set(move.to, _board[move.from]);
+		for (int i = 0; i < 4; ++i)
+		{
+			if (move.blue_flags & (1 << i))
+			{
+				set(neighbors[move.to][i], _board[move.from]);
+			}
+		};
 		unset(move.from);
-	};
+	}
 
 	void uncommit(Move move)
 	{
+		LIBASSERT_DEBUG_ASSERT(_board[move.to] != Cell::Empty);
+		LIBASSERT_DEBUG_ASSERT(_board[move.to] != Cell::Blue);
+		LIBASSERT_DEBUG_ASSERT(_board[move.from] == Cell::Empty);
+
 		set(move.from, _board[move.to]);
+		for (int i = 0; i < 4; ++i)
+		{
+			if (move.blue_flags & (1 << i))
+			{
+				unset(neighbors[move.to][i]);
+				set(neighbors[move.to][i], Cell::Blue);
+			}
+		};
 		unset(move.to);
 	}
 
@@ -125,7 +150,15 @@ export class GameState
 					{
 						continue;
 					}
-					co_yield Move{source, target};
+					std::uint_fast8_t blue_flags = 0;
+					for (auto [dir, neighbor] : neighbors[target] | std::views::enumerate)
+					{
+						if (_board[neighbor] == Cell::Blue)
+						{
+							blue_flags |= 1 << dir;
+						}
+					}
+					co_yield Move{.from = source, .to = target, .blue_flags = blue_flags};
 				}
 			}
 		}
@@ -158,13 +191,14 @@ export class GameState
 
 	void set(std::uint_fast8_t idx, Cell cell)
 	{
-		LIBASSERT_DEBUG_ASSERT(_board[idx] == Cell::Empty);
+		LIBASSERT_DEBUG_ASSERT(_board[idx] != Cell::Green);
+		LIBASSERT_DEBUG_ASSERT(_board[idx] != Cell::Purple);
+		LIBASSERT_DEBUG_ASSERT(cell != Cell::Empty);
 		_board[idx] = cell;
 		for (auto neighbor : neighbors[idx])
 		{
 			switch (cell)
 			{
-			case Cell::Empty: break;
 			case Cell::Green: ++_green_cover[neighbor]; break;
 			case Cell::Purple: ++_purple_cover[neighbor]; break;
 			case Cell::Blue: break;
@@ -173,6 +207,7 @@ export class GameState
 		}
 	}
 
+	// TODO: Incremental hash
 	std::uint64_t hash() const { return XXH64(_board, num_cells, 12345); }
 
   private:

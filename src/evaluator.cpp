@@ -34,7 +34,7 @@ export class Solver
 		for (Move move : state.get_legal_moves(player))
 		{
 			state.commit(move);
-			evaluations.emplace_back(move, -evaluate(opponent(player), true, 2, -10000, 10000));
+			evaluations.emplace_back(move, -evaluate(opponent(player), true, 0, -10000, 10000));
 			state.uncommit(move);
 		}
 		std::ranges::sort(evaluations, [](auto const &a, auto const &b) { return a.score > b.score; });
@@ -74,12 +74,12 @@ export class Solver
 			for (Move move : state.get_legal_moves(player))
 			{
 				state.commit(move);
-				score = std::max(score, -evaluate(opponent(player), true, depth - 1, -alpha, -beta));
+				score = std::max(score, -evaluate(opponent(player), true, depth - 1, -beta, -alpha));
+				state.uncommit(move);
 				if (score >= beta)
 				{
 					break;
 				}
-				state.uncommit(move);
 				alpha = std::max(alpha, score);
 			}
 			insert_transposition(hash, score, depth);
