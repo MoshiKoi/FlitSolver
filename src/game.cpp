@@ -175,16 +175,25 @@ export class GameState
 
 	void unset(std::uint_fast8_t idx)
 	{
-		for (auto neighbor : neighbors[idx])
+		switch (_board[idx])
 		{
-			switch (_board[idx])
+		case Cell::Empty: break;
+		case Cell::Green:
+			for (auto neighbor : neighbors[idx])
 			{
-			case Cell::Empty: break;
-			case Cell::Green: --_green_cover[neighbor]; break;
-			case Cell::Purple: --_purple_cover[neighbor]; break;
-			case Cell::Blue: break;
-			default: std::unreachable();
+				--_green_cover[neighbor];
 			}
+			--_heuristic;
+			break;
+		case Cell::Purple:
+			for (auto neighbor : neighbors[idx])
+			{
+				--_purple_cover[neighbor];
+			}
+			++_heuristic;
+			break;
+		case Cell::Blue: break;
+		default: std::unreachable();
 		}
 		_board[idx] = Cell::Empty;
 	}
@@ -195,22 +204,33 @@ export class GameState
 		LIBASSERT_DEBUG_ASSERT(_board[idx] != Cell::Purple);
 		LIBASSERT_DEBUG_ASSERT(cell != Cell::Empty);
 		_board[idx] = cell;
-		for (auto neighbor : neighbors[idx])
+		switch (cell)
 		{
-			switch (cell)
+		case Cell::Green:
+			for (auto neighbor : neighbors[idx])
 			{
-			case Cell::Green: ++_green_cover[neighbor]; break;
-			case Cell::Purple: ++_purple_cover[neighbor]; break;
-			case Cell::Blue: break;
-			default: std::unreachable();
+				++_green_cover[neighbor];
 			}
+			++_heuristic;
+			break;
+		case Cell::Purple:
+			for (auto neighbor : neighbors[idx])
+			{
+				++_purple_cover[neighbor];
+			}
+			--_heuristic;
+			break;
+		case Cell::Blue: break;
+		default: std::unreachable();
 		}
 	}
 
 	// TODO: Incremental hash
 	std::uint64_t hash() const { return XXH64(_board, num_cells, 12345); }
+	int heuristic(Cell player) const { return (player == Cell::Green ? _heuristic : -_heuristic) * 1000; }
 
   private:
+	int _heuristic = 0;
 	Cell _board[num_cells] = {};
 	std::uint8_t _green_cover[num_cells] = {};
 	std::uint8_t _purple_cover[num_cells] = {};

@@ -83,9 +83,10 @@ export class Solver
 			int total_spawn_score = 0;
 			int count = 0;
 			auto possible_spawns = state.get_possible_spawns() | std::ranges::to<std::vector>();
-			std::ranges::shuffle(possible_spawns, _engine);
-			for (auto idx : possible_spawns | std::views::take(10))
+			for (int i = 0; i < possible_spawns.size() and i < 10; ++i)
 			{
+				std::ranges::swap(possible_spawns[i], possible_spawns[rand() % (possible_spawns.size() - i) + i]);
+				auto idx = possible_spawns[i];
 				state.set(idx, Cell::Blue);
 				total_spawn_score += evaluate(player, false, depth, alpha, beta);
 				++count;
@@ -127,33 +128,13 @@ export class Solver
 		}
 		else
 		{
-			int score = heuristic(player);
+			int score = state.heuristic(player);
 			entry.bound = TranspositionBound::Exact;
 			entry.is_valid = true;
 			entry.score = score;
 			entry.depth = 0;
 			return score;
 		}
-	}
-
-	int heuristic(Cell player)
-	{
-		int score = 0;
-		for (std::uint_fast8_t row = 0; row < rows; ++row)
-		{
-			for (std::uint_fast8_t col = 0; col < cols; ++col)
-			{
-				if (state.get(row, col) == player)
-				{
-					++score;
-				}
-				else if (state.get(row, col) == opponent(player))
-				{
-					--score;
-				}
-			}
-		}
-		return score * 1000;
 	}
 
 	enum class TranspositionBound : std::uint8_t
