@@ -52,7 +52,7 @@ export class Solver
 		int const original_beta = beta;
 		auto hash = state.hash();
 		auto &entry = get_transposition_entry(hash);
-		if (entry.is_valid and entry.depth > depth)
+		if (not blue and entry.is_valid and entry.depth >= depth)
 		{
 			switch (entry.bound)
 			{
@@ -80,26 +80,27 @@ export class Solver
 		}
 		if (blue)
 		{
-			int total_spawn_score = 0;
-			int count = 0;
-			auto possible_spawns = state.get_possible_spawns() | std::ranges::to<std::vector>();
-			for (int i = 0; i < possible_spawns.size() and i < 10; ++i)
-			{
-				std::ranges::swap(possible_spawns[i], possible_spawns[rand() % (possible_spawns.size() - i) + i]);
-				auto idx = possible_spawns[i];
-				state.set(idx, Cell::Blue);
-				total_spawn_score += evaluate(player, false, depth, alpha, beta);
-				++count;
-				state.unset(idx);
-			}
-			int avg_spawn_score = total_spawn_score / count;
+			// int total_spawn_score = 0;
+			// int count = 0;
+			// auto possible_spawns = state.get_possible_spawns() | std::ranges::to<std::vector>();
+			// for (int i = 0; i < possible_spawns.size() and i < 10; ++i)
+			// {
+			// 	std::ranges::swap(possible_spawns[i], possible_spawns[rand() % (possible_spawns.size() - i) + i]);
+			// 	auto idx = possible_spawns[i];
+			// 	state.set(idx, Cell::Blue);
+			// 	total_spawn_score += evaluate(player, false, depth, alpha, beta);
+			// 	++count;
+			// 	state.unset(idx);
+			// }
+			// int avg_spawn_score = total_spawn_score / count;
 			int no_spawn_score = evaluate(player, false, depth, alpha, beta);
 			// There is a 1/6 chance of actually having a spawn
-			int score = (5 * no_spawn_score + avg_spawn_score) / 6;
-			entry.is_valid = true;
-			entry.bound = TranspositionBound::Exact;
-			entry.score = score;
-			entry.depth = depth;
+			// int score = (5 * no_spawn_score + avg_spawn_score) / 6;
+			int score = no_spawn_score;
+			// entry.is_valid = true;
+			// entry.bound = TranspositionBound::Exact;
+			// entry.score = score;
+			// entry.depth = depth;
 			return score;
 		}
 		else if (depth > 0)
