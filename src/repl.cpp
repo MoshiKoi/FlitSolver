@@ -1,6 +1,7 @@
 module;
 
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <print>
@@ -124,6 +125,7 @@ class Repl
 			{"clear", &Repl::clear},
 			{"set", &Repl::set},
 			{"eval", &Repl::eval},
+			{"load", &Repl::load},
 		};
 
 		_tokenizer = {line};
@@ -182,6 +184,21 @@ class Repl
 		for (auto [move, score] : solver.solve(color, depth))
 		{
 			std::println("{} : {}", move, score);
+		}
+	}
+
+	void load()
+	{
+		auto name = _tokenizer.read_word();
+		std::ifstream fs{std::string{name}};
+		if (not fs)
+		{
+			throw std::runtime_error{"Could not open file"};
+		}
+		std::string line;
+		while (std::getline(fs, line))
+		{
+			interpret(line);
 		}
 	}
 
