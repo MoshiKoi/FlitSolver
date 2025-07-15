@@ -92,7 +92,8 @@ export class Solver
 			int total_spawn_score = 0;
 			int count = 0;
 			auto possible_spawns = state.get_possible_spawns() | std::ranges::to<std::vector>();
-			for (int i = 0; i < possible_spawns.size() and i < 10; ++i)
+			int children = std::min<int>(5, possible_spawns.size());
+			for (int i = 0; i < children; ++i)
 			{
 				std::ranges::swap(possible_spawns[i], possible_spawns[rand() % (possible_spawns.size() - i) + i]);
 				auto idx = possible_spawns[i];

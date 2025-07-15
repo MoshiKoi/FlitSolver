@@ -53,7 +53,7 @@ TEST_CASE("Should capture blue before opponent", "[evaluator]")
 	state.turn(flit::Cell::Green);
 	INFO(flit::dump(state));
 	flit::Solver evaluator{state};
-	auto results = evaluator.solve(flit::Cell::Green, 5);
+	auto results = evaluator.solve(flit::Cell::Green, 3);
 	ASSERT(results.size() > 0);
 	auto [best_move, score] = results[0];
 	ASSERT(best_move.from == flit::from_rc(4, 8));
