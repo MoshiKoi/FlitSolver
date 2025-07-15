@@ -27,7 +27,7 @@ export struct solve_result
 export class Solver
 {
   public:
-	Solver(GameState state, std::size_t transposition_table_size = 1 << 20)
+	Solver(GameState state, std::size_t transposition_table_size = 1 << 25)
 		: state{std::move(state)}, _transposition_table_size{transposition_table_size},
 		  _transposition_table{std::make_unique<TranspositionTableEntry[]>(_transposition_table_size)}
 	{
@@ -44,8 +44,11 @@ export class Solver
 			state.uncommit(move);
 		}
 		std::ranges::sort(evaluations, [](auto const &a, auto const &b) { return a.score > b.score; });
-		std::println("Evaluated nodes: {}", _nodes);
-		std::println("Transposition table hits: {}", _transposition_table_hits);
+		std::println("Evaluated nodes: {} ({} leaves)", _nodes, _leaf_nodes);
+		std::println(
+			"Transposition table hits: {} ({:.2f}%)",
+			_transposition_table_hits,
+			100.0 * static_cast<double>(_transposition_table_hits) / static_cast<double>(_nodes));
 		return evaluations;
 	}
 
@@ -89,7 +92,7 @@ export class Solver
 			int total_spawn_score = 0;
 			int count = 0;
 			auto possible_spawns = state.get_possible_spawns() | std::ranges::to<std::vector>();
-			for (int i = 0; i < possible_spawns.size() and i < 20; ++i)
+			for (int i = 0; i < possible_spawns.size() and i < 10; ++i)
 			{
 				std::ranges::swap(possible_spawns[i], possible_spawns[rand() % (possible_spawns.size() - i) + i]);
 				auto idx = possible_spawns[i];
@@ -130,6 +133,7 @@ export class Solver
 		}
 		else
 		{
+			++_leaf_nodes;
 			int score = state.heuristic();
 			entry.bound = TranspositionBound::Exact;
 			entry.is_valid = true;
@@ -164,6 +168,7 @@ export class Solver
 	std::size_t _transposition_table_size;
 	std::unique_ptr<TranspositionTableEntry[]> _transposition_table;
 	std::size_t _nodes = 0;
+	std::size_t _leaf_nodes = 0;
 	std::size_t _transposition_table_hits = 0;
 };
 
