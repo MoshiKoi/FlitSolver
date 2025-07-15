@@ -20,8 +20,6 @@ export constexpr std::uint_fast8_t rows = 12;
 export constexpr std::uint_fast8_t cols = 12;
 constexpr std::uint_fast8_t num_cells = rows * cols;
 
-static_assert(num_cells < 256);
-
 export constexpr std::uint_fast8_t
 from_rc(std::uint_fast8_t row, std::uint_fast8_t col) noexcept
 {
@@ -98,8 +96,7 @@ export class GameState
 
 	void commit(Move move)
 	{
-		LIBASSERT_DEBUG_ASSERT(_board[move.from] != Cell::Empty);
-		LIBASSERT_DEBUG_ASSERT(_board[move.from] != Cell::Blue);
+		LIBASSERT_DEBUG_ASSERT(_board[move.from] == _turn);
 		LIBASSERT_DEBUG_ASSERT(_board[move.to] == Cell::Empty);
 
 		set(move.to, _board[move.from]);
@@ -111,12 +108,12 @@ export class GameState
 			}
 		};
 		unset(move.from);
+		_turn = opponent(_turn);
 	}
 
 	void uncommit(Move move)
 	{
-		LIBASSERT_DEBUG_ASSERT(_board[move.to] != Cell::Empty);
-		LIBASSERT_DEBUG_ASSERT(_board[move.to] != Cell::Blue);
+		LIBASSERT_DEBUG_ASSERT(_board[move.to] == opponent(_turn));
 		LIBASSERT_DEBUG_ASSERT(_board[move.from] == Cell::Empty);
 
 		set(move.from, _board[move.to]);
@@ -129,12 +126,13 @@ export class GameState
 			}
 		};
 		unset(move.to);
+		_turn = opponent(_turn);
 	}
 
-	std::generator<Move> get_legal_moves(Cell player) const
+	std::generator<Move> get_legal_moves() const
 	{
-		LIBASSERT_DEBUG_ASSERT(player == Cell::Green or player == Cell::Purple);
-		std::uint8_t const *player_cover = player == Cell::Green ? _green_cover : _purple_cover;
+		LIBASSERT_DEBUG_ASSERT(_turn == Cell::Green or _turn == Cell::Purple);
+		std::uint8_t const *player_cover = _turn == Cell::Green ? _green_cover : _purple_cover;
 
 		for (std::uint_fast8_t target = 0; target < num_cells; ++target)
 		{
@@ -142,7 +140,7 @@ export class GameState
 			{
 				for (std::uint_fast8_t source = 0; source < num_cells; ++source)
 				{
-					if (_board[source] != player)
+					if (_board[source] != _turn)
 					{
 						continue;
 					}
@@ -226,10 +224,17 @@ export class GameState
 	}
 
 	// TODO: Incremental hash
-	std::uint64_t hash() const { return XXH64(_board, num_cells, 12345); }
-	int heuristic(Cell player) const { return (player == Cell::Green ? _heuristic : -_heuristic) * 1000; }
+	std::uint64_t hash() const
+	{
+		return XXH3_64bits(_board, num_cells * sizeof(*_board)) & XXH3_64bits(&_turn, sizeof(Cell));
+	}
+	int heuristic() const { return (_turn == Cell::Green ? _heuristic : -_heuristic) * 1000; }
+
+	Cell turn() const { return _turn; }
+	void turn(Cell turn) { _turn = turn; }
 
   private:
+	Cell _turn = Cell::Empty;
 	int _heuristic = 0;
 	Cell _board[num_cells] = {};
 	std::uint8_t _green_cover[num_cells] = {};

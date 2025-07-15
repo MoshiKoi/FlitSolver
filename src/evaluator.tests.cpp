@@ -12,6 +12,8 @@ TEST_CASE("Best move should be immediate capture", "[evaluator]")
 	state.set(7, 5, flit::Cell::Blue);
 	state.set(0, 0, flit::Cell::Purple);
 	state.set(0, 1, flit::Cell::Purple);
+	state.turn(flit::Cell::Green);
+	INFO(flit::dump(state));
 	flit::Solver evaluator{state};
 
 	auto results = evaluator.solve(flit::Cell::Green, 0);
@@ -29,6 +31,8 @@ TEST_CASE("Best move should try to reach blue", "[evaluator]")
 	state.set(8, 5, flit::Cell::Blue);
 	state.set(0, 0, flit::Cell::Purple);
 	state.set(0, 1, flit::Cell::Purple);
+	state.turn(flit::Cell::Green);
+	INFO(flit::dump(state));
 	flit::Solver evaluator{state};
 
 	auto results = evaluator.solve(flit::Cell::Green, 2);
@@ -46,6 +50,8 @@ TEST_CASE("Should capture blue before opponent", "[evaluator]")
 	state.set(8, 8, flit::Cell::Blue);
 	state.set(8, 5, flit::Cell::Purple);
 	state.set(8, 4, flit::Cell::Purple);
+	state.turn(flit::Cell::Green);
+	INFO(flit::dump(state));
 	flit::Solver evaluator{state};
 	auto results = evaluator.solve(flit::Cell::Green, 5);
 	ASSERT(results.size() > 0);

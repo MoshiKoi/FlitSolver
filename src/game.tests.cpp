@@ -26,7 +26,8 @@ TEST_CASE("Invalid board has no moves")
 	{
 		flit::GameState state{};
 		INFO(flit::dump(state));
-		std::vector result = state.get_legal_moves(flit::Cell::Green) | std::ranges::to<std::vector>();
+		state.turn(flit::Cell::Green);
+		std::vector result = state.get_legal_moves() | std::ranges::to<std::vector>();
 		REQUIRE_THAT(result, IsEmpty());
 	}
 
@@ -35,7 +36,8 @@ TEST_CASE("Invalid board has no moves")
 		flit::GameState state{};
 		INFO(flit::dump(state));
 		state.set(5, 5, flit::Cell::Purple);
-		std::vector result = state.get_legal_moves(flit::Cell::Green) | std::ranges::to<std::vector>();
+		state.turn(flit::Cell::Green);
+		std::vector result = state.get_legal_moves() | std::ranges::to<std::vector>();
 		REQUIRE_THAT(result, IsEmpty());
 	}
 }
@@ -47,13 +49,17 @@ TEST_CASE("Piece can move to other pieces' adjacent cells")
 		flit::GameState state{};
 		state.set(4, 5, flit::Cell::Green);
 		state.set(5, 5, flit::Cell::Green);
+		state.turn(flit::Cell::Green);
 		INFO(flit::dump(state));
 
-		std::vector result = state.get_legal_moves(flit::Cell::Green) | std::ranges::to<std::vector>();
+		std::vector result = state.get_legal_moves() | std::ranges::to<std::vector>();
 		std::array expected{
-			flit::Move{flit::from_rc(4, 5), flit::from_rc(5, 6)}, flit::Move{flit::from_rc(4, 5), flit::from_rc(6, 5)},
-			flit::Move{flit::from_rc(4, 5), flit::from_rc(5, 4)}, flit::Move{flit::from_rc(5, 5), flit::from_rc(4, 6)},
-			flit::Move{flit::from_rc(5, 5), flit::from_rc(4, 4)}, flit::Move{flit::from_rc(5, 5), flit::from_rc(3, 5)},
+			flit::Move{flit::from_rc(4, 5), flit::from_rc(5, 6)},
+			flit::Move{flit::from_rc(4, 5), flit::from_rc(6, 5)},
+			flit::Move{flit::from_rc(4, 5), flit::from_rc(5, 4)},
+			flit::Move{flit::from_rc(5, 5), flit::from_rc(4, 6)},
+			flit::Move{flit::from_rc(5, 5), flit::from_rc(4, 4)},
+			flit::Move{flit::from_rc(5, 5), flit::from_rc(3, 5)},
 		};
 
 		REQUIRE_THAT(result, UnorderedRangeEquals(expected));
@@ -64,9 +70,10 @@ TEST_CASE("Piece can move to other pieces' adjacent cells")
 		flit::GameState state{};
 		state.set(0, 0, flit::Cell::Green);
 		state.set(5, 5, flit::Cell::Green);
+		state.turn(flit::Cell::Green);
 		INFO(flit::dump(state));
 
-		std::vector result = state.get_legal_moves(flit::Cell::Green) | std::ranges::to<std::vector>();
+		std::vector result = state.get_legal_moves() | std::ranges::to<std::vector>();
 		std::array expected{
 			flit::Move{flit::from_rc(5, 5), flit::from_rc(0, 1)},
 			flit::Move{flit::from_rc(5, 5), flit::from_rc(1, 0)},
@@ -86,14 +93,19 @@ TEST_CASE("Piece can move to other pieces' adjacent cells")
 		flit::GameState state{};
 		state.set(5, 5, flit::Cell::Green);
 		state.set(5, 7, flit::Cell::Green);
+		state.turn(flit::Cell::Green);
 		INFO(flit::dump(state));
 
-		std::vector result = state.get_legal_moves(flit::Cell::Green) | std::ranges::to<std::vector>();
+		std::vector result = state.get_legal_moves() | std::ranges::to<std::vector>();
 		std::array expected{
-			flit::Move{flit::from_rc(5, 5), flit::from_rc(5, 8)}, flit::Move{flit::from_rc(5, 5), flit::from_rc(6, 7)},
-			flit::Move{flit::from_rc(5, 5), flit::from_rc(5, 6)}, flit::Move{flit::from_rc(5, 5), flit::from_rc(4, 7)},
-			flit::Move{flit::from_rc(5, 7), flit::from_rc(5, 6)}, flit::Move{flit::from_rc(5, 7), flit::from_rc(6, 5)},
-			flit::Move{flit::from_rc(5, 7), flit::from_rc(5, 4)}, flit::Move{flit::from_rc(5, 7), flit::from_rc(4, 5)},
+			flit::Move{flit::from_rc(5, 5), flit::from_rc(5, 8)},
+			flit::Move{flit::from_rc(5, 5), flit::from_rc(6, 7)},
+			flit::Move{flit::from_rc(5, 5), flit::from_rc(5, 6)},
+			flit::Move{flit::from_rc(5, 5), flit::from_rc(4, 7)},
+			flit::Move{flit::from_rc(5, 7), flit::from_rc(5, 6)},
+			flit::Move{flit::from_rc(5, 7), flit::from_rc(6, 5)},
+			flit::Move{flit::from_rc(5, 7), flit::from_rc(5, 4)},
+			flit::Move{flit::from_rc(5, 7), flit::from_rc(4, 5)},
 		};
 
 		REQUIRE_THAT(result, UnorderedRangeEquals(expected));
@@ -108,8 +120,9 @@ TEST_CASE("Moving adjacent to blue captures the blue")
 		state.set(4, 5, flit::Cell::Green);
 		state.set(5, 5, flit::Cell::Green);
 		state.set(5, 7, flit::Cell::Blue);
-
-		std::vector moves = state.get_legal_moves(flit::Cell::Green) | std::ranges::to<std::vector>();
+		state.turn(flit::Cell::Green);
+		INFO(flit::dump(state));
+		std::vector moves = state.get_legal_moves() | std::ranges::to<std::vector>();
 
 		std::vector capturing_moves = moves
 			| std::views::filter([](flit::Move move) { return move.blue_flags != 0; })
@@ -144,8 +157,9 @@ TEST_CASE("Moving adjacent to blue captures the blue")
 		state.set(5, 5, flit::Cell::Green);
 		state.set(5, 7, flit::Cell::Blue);
 		state.set(6, 6, flit::Cell::Blue);
-
-		std::vector moves = state.get_legal_moves(flit::Cell::Green) | std::ranges::to<std::vector>();
+		state.turn(flit::Cell::Green);
+		INFO(flit::dump(state));
+		std::vector moves = state.get_legal_moves() | std::ranges::to<std::vector>();
 
 		std::vector capturing_moves = moves
 			| std::views::filter([](flit::Move move) { return move.blue_flags != 0; })
