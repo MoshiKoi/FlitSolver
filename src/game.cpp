@@ -226,7 +226,7 @@ export class GameState
 	// TODO: Incremental hash
 	std::uint64_t hash() const
 	{
-		return XXH3_64bits(_board, num_cells * sizeof(*_board)) & XXH3_64bits(&_turn, sizeof(Cell));
+		return XXH3_64bits(_board, num_cells * sizeof(*_board)) ^ XXH3_64bits(&_turn, sizeof(Cell));
 	}
 	int heuristic() const { return (_turn == Cell::Green ? _heuristic : -_heuristic) * 1000; }
 

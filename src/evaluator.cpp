@@ -5,6 +5,7 @@ module;
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <print>
 #include <random>
 #include <ranges>
 #include <utility>
@@ -43,18 +44,22 @@ export class Solver
 			state.uncommit(move);
 		}
 		std::ranges::sort(evaluations, [](auto const &a, auto const &b) { return a.score > b.score; });
+		std::println("Evaluated nodes: {}", _nodes);
+		std::println("Transposition table hits: {}", _transposition_table_hits);
 		return evaluations;
 	}
 
   private:
 	int evaluate(bool blue, int depth, int alpha, int beta)
 	{
+		++_nodes;
 		int const original_alpha = alpha;
 		int const original_beta = beta;
 		auto hash = state.hash();
 		auto &entry = get_transposition_entry(hash);
-		if (entry.is_valid and entry.depth >= depth)
+		if (not blue and entry.is_valid and entry.depth >= depth)
 		{
+			++_transposition_table_hits;
 			switch (entry.bound)
 			{
 			case TranspositionBound::Exact: return entry.score;
@@ -79,8 +84,27 @@ export class Solver
 			default: LIBASSERT_UNREACHABLE();
 			}
 		}
-
-		if (depth > 0)
+		if (blue)
+		{
+			int total_spawn_score = 0;
+			int count = 0;
+			auto possible_spawns = state.get_possible_spawns() | std::ranges::to<std::vector>();
+			for (int i = 0; i < possible_spawns.size() and i < 20; ++i)
+			{
+				std::ranges::swap(possible_spawns[i], possible_spawns[rand() % (possible_spawns.size() - i) + i]);
+				auto idx = possible_spawns[i];
+				state.set(idx, Cell::Blue);
+				total_spawn_score += evaluate(false, depth, alpha, beta);
+				state.unset(idx);
+				++count;
+			}
+			int avg_spawn_score = total_spawn_score / count;
+			int no_spawn_score = evaluate(false, depth, alpha, beta);
+			// There is a 1/6 chance of actually having a spawn
+			int score = (5 * no_spawn_score + avg_spawn_score) / 6;
+			return score;
+		}
+		else if (depth > 0)
 		{
 			int score = std::numeric_limits<int>::min();
 			for (Move move : state.get_legal_moves())
@@ -139,6 +163,8 @@ export class Solver
 	std::minstd_rand _engine{};
 	std::size_t _transposition_table_size;
 	std::unique_ptr<TranspositionTableEntry[]> _transposition_table;
+	std::size_t _nodes = 0;
+	std::size_t _transposition_table_hits = 0;
 };
 
 } // namespace flit
