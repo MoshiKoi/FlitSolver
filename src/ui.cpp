@@ -90,6 +90,7 @@ main()
 	std::mt19937 gen{rd()};
 
 	InitWindow(2400, 1600, "Flit");
+	SetExitKey(KEY_NULL);
 	SetTargetFPS(60);
 
 	Font font = GetFontDefault();
