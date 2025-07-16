@@ -209,3 +209,46 @@ TEST_CASE("Moving adjacent to blue captures the blue")
 		ASSERT(state.get(5, 7) == flit::Cell::Blue);
 	}
 }
+
+TEST_CASE("Committing and uncommiting a move restores game hash", "[game]")
+{
+	SECTION("Without blue captures")
+	{
+		flit::GameState state{};
+		state.set(4, 5, flit::Cell::Green);
+		state.set(5, 5, flit::Cell::Green);
+		state.turn(flit::Cell::Green);
+		INFO(flit::dump(state));
+
+		for (flit::Move move : state.get_legal_moves())
+		{
+			std::uint64_t premove_hash = state.hash();
+			state.commit(move);
+			std::uint64_t commit_hash = state.hash();
+			state.uncommit(move);
+			std::uint64_t uncommit_hash = state.hash();
+			ASSERT(premove_hash != commit_hash);
+			ASSERT(premove_hash == uncommit_hash);
+		}
+	}
+	SECTION("With blue captures")
+	{
+		flit::GameState state{};
+		state.set(4, 5, flit::Cell::Green);
+		state.set(5, 5, flit::Cell::Green);
+		state.set(5, 7, flit::Cell::Blue);
+		state.turn(flit::Cell::Green);
+		INFO(flit::dump(state));
+
+		for (flit::Move move : state.get_legal_moves())
+		{
+			std::uint64_t premove_hash = state.hash();
+			state.commit(move);
+			std::uint64_t commit_hash = state.hash();
+			state.uncommit(move);
+			std::uint64_t uncommit_hash = state.hash();
+			ASSERT(premove_hash != commit_hash);
+			ASSERT(premove_hash == uncommit_hash);
+		}
+	}
+}

@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(FLITSOLVER_BUILD_TESTS "Build tests" OFF)
 
-find_package(xxHash CONFIG REQUIRED)
 find_package(libassert CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
 

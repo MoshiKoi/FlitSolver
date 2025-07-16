@@ -1,14 +1,15 @@
 module;
 
 #include <libassert/assert.hpp>
-#include <xxhash.h>
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <generator>
+#include <random>
 #include <ranges>
 
 export module flit.game;
@@ -82,6 +83,30 @@ std::array<std::array<std::uint_fast8_t, 4>, num_cells> const neighbors = []
 	return result;
 }();
 
+namespace
+{
+
+struct ZobristTable
+{
+	std::array<std::uint64_t, 3uz * num_cells> cell_table;
+	std::uint64_t is_blue_move_hash;
+	std::uint64_t is_green_move_hash;
+};
+
+ZobristTable const zobrist_table = []
+{
+	std::mt19937_64 engine{12345};
+	std::uniform_int_distribution<std::uint64_t> dist{};
+	auto random_hash = std::bind_front(dist, engine);
+	ZobristTable result;
+	std::ranges::generate(result.cell_table, random_hash);
+	result.is_blue_move_hash = random_hash();
+	result.is_green_move_hash = random_hash();
+	return result;
+}();
+
+} // namespace
+
 export class GameState
 {
   public:
@@ -109,6 +134,7 @@ export class GameState
 		};
 		unset(move.from);
 		_turn = opponent(_turn);
+		_hash ^= zobrist_table.is_green_move_hash;
 	}
 
 	void uncommit(Move move)
@@ -127,6 +153,7 @@ export class GameState
 		};
 		unset(move.to);
 		_turn = opponent(_turn);
+		_hash ^= zobrist_table.is_green_move_hash;
 	}
 
 	std::generator<Move> get_legal_moves() const
@@ -175,7 +202,7 @@ export class GameState
 	{
 		switch (_board[idx])
 		{
-		case Cell::Empty: break;
+		case Cell::Empty: return;
 		case Cell::Green:
 			for (auto neighbor : neighbors[idx])
 			{
@@ -193,6 +220,7 @@ export class GameState
 		case Cell::Blue: break;
 		default: std::unreachable();
 		}
+		_hash ^= zobrist_table.cell_table[idx * 3 + std::to_underlying(_board[idx]) - 1];
 		_board[idx] = Cell::Empty;
 	}
 
@@ -201,7 +229,11 @@ export class GameState
 		LIBASSERT_DEBUG_ASSERT(_board[idx] != Cell::Green);
 		LIBASSERT_DEBUG_ASSERT(_board[idx] != Cell::Purple);
 		LIBASSERT_DEBUG_ASSERT(cell != Cell::Empty);
+		if (_board[idx] == Cell::Blue) {
+			_hash ^= zobrist_table.cell_table[idx * 3 + std::to_underlying(Cell::Blue) - 1];
+		}
 		_board[idx] = cell;
+		_hash ^= zobrist_table.cell_table[idx * 3 + std::to_underlying(cell) - 1];
 		switch (cell)
 		{
 		case Cell::Green:
@@ -224,10 +256,7 @@ export class GameState
 	}
 
 	// TODO: Incremental hash
-	std::uint64_t hash() const
-	{
-		return XXH3_64bits(_board, num_cells * sizeof(*_board)) ^ XXH3_64bits(&_turn, sizeof(Cell));
-	}
+	std::uint64_t hash() const { return _hash; }
 	int heuristic() const { return (_turn == Cell::Green ? _heuristic : -_heuristic) * 1000; }
 
 	Cell turn() const { return _turn; }
@@ -236,6 +265,7 @@ export class GameState
   private:
 	Cell _turn = Cell::Empty;
 	int _heuristic = 0;
+	std::uint64_t _hash = 0;
 	Cell _board[num_cells] = {};
 	std::uint8_t _green_cover[num_cells] = {};
 	std::uint8_t _purple_cover[num_cells] = {};
