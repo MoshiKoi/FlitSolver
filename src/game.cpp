@@ -193,7 +193,10 @@ export class GameState
 	{
 		for (std::uint_fast8_t idx = 0; idx < num_cells; ++idx)
 		{
-			if (_board[idx] == Cell::Empty and _green_cover[idx] == 0 and _purple_cover[idx] == 0)
+			if ((_board[idx] == Cell::Empty)
+				and (_green_cover[idx] == 0)
+				and (_purple_cover[idx] == 0)
+				and (_blue_cover[idx] == 0))
 				co_yield idx;
 		}
 	}
@@ -217,7 +220,12 @@ export class GameState
 			}
 			--_purple_count;
 			break;
-		case Cell::Blue: break;
+		case Cell::Blue:
+			for (auto neighbor : neighbors[idx])
+			{
+				--_blue_cover[neighbor];
+			}
+			break;
 		default: std::unreachable();
 		}
 		_hash ^= zobrist_table.cell_table[idx * 3 + std::to_underlying(_board[idx]) - 1];
@@ -251,7 +259,12 @@ export class GameState
 			}
 			++_purple_count;
 			break;
-		case Cell::Blue: break;
+		case Cell::Blue:
+			for (auto neighbor : neighbors[idx])
+			{
+				++_blue_cover[neighbor];
+			}
+			break;
 		default: std::unreachable();
 		}
 	}
@@ -277,7 +290,7 @@ export class GameState
 	Cell _board[num_cells] = {};
 	std::uint8_t _green_cover[num_cells] = {};
 	std::uint8_t _purple_cover[num_cells] = {};
-
+	std::uint8_t _blue_cover[num_cells] = {};
 	friend std::string dump(flit::GameState const &state);
 };
 
