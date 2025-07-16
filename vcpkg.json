@@ -1,7 +1,8 @@
 {
   "dependencies": [
     "catch2",
+    "libassert",
     "xxhash",
-    "libassert"
+    "raylib"
   ]
 }

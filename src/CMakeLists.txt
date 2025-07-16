@@ -13,6 +13,9 @@ target_link_libraries(Repl PRIVATE Game Evaluator)
 add_executable(solver main.cpp)
 target_link_libraries(solver PRIVATE Repl)
 
+add_executable(ui ui.cpp)
+target_link_libraries(ui PRIVATE Game raylib)
+
 if (FLITSOLVER_BUILD_TESTS)
     add_executable(Game.Tests game.tests.cpp)
     target_link_libraries(Game.Tests PRIVATE Game libassert::assert Catch2::Catch2WithMain)
