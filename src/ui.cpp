@@ -1,6 +1,7 @@
 #include <raylib.h>
 
 #include <algorithm>
+#include <generator>
 #include <random>
 #include <ranges>
 #include <set>
@@ -109,27 +110,47 @@ main()
 		if (roll(gen) == 1)
 		{
 			auto possible_spawns = game.get_possible_spawns() | std::ranges::to<std::vector>();
-			std::uniform_int_distribution<std::size_t> dist{0, possible_spawns.size() - 1};
-			game.set(possible_spawns[dist(gen)], flit::Cell::Blue);
+			if (not possible_spawns.empty())
+			{
+				std::uniform_int_distribution<std::size_t> dist{0, possible_spawns.size() - 1};
+				game.set(possible_spawns[dist(gen)], flit::Cell::Blue);
+			}
 		}
 	};
 
 	while (!WindowShouldClose())
 	{
-		if (game.turn() == flit::Cell::Green and green_bot != nullptr)
+		auto legal_moves = game.get_legal_moves();
+		std::optional<flit::Cell> winner;
+		if (game.green_count() >= 48)
 		{
-			flit::Move move = green_bot->choose_move(game);
-			game.commit(move);
-			maybe_spawn_blue();
+			winner = flit::Cell::Green;
+		}
+		else if (game.purple_count() >= 48)
+		{
+			winner = flit::Cell::Purple;
+		}
+		else if (not winner.has_value() and legal_moves.begin() != legal_moves.end())
+		{
+			if (game.turn() == flit::Cell::Green and green_bot != nullptr)
+			{
+				flit::Move move = green_bot->choose_move(game);
+				game.commit(move);
+				maybe_spawn_blue();
+			}
+
+			if (game.turn() == flit::Cell::Purple and purple_bot != nullptr)
+			{
+				flit::Move move = purple_bot->choose_move(game);
+				game.commit(move);
+				maybe_spawn_blue();
+			}
+		}
+		else
+		{
+			winner = flit::opponent(game.turn());
 		}
 
-		if (game.turn() == flit::Cell::Purple and purple_bot != nullptr)
-		{
-			flit::Move move = purple_bot->choose_move(game);
-			game.commit(move);
-			maybe_spawn_blue();
-		}
-		
 		int const screen_height = GetScreenHeight();
 		int const screen_width = GetScreenWidth();
 
@@ -241,6 +262,32 @@ main()
 					}
 				}
 			}
+		}
+
+		if (winner.has_value())
+		{
+			char const *message;
+			Color color;
+			switch (winner.value())
+			{
+			case flit::Cell::Green:
+				color = GREEN;
+				message = TextFormat("Green Wins %i-%i", game.green_count(), game.purple_count());
+				break;
+			case flit::Cell::Purple:
+				color = PURPLE;
+				message = TextFormat("Purple Wins %i-%i", game.green_count(), game.purple_count());
+				break;
+			}
+			DrawRectangle(0, 0, cell_size * flit::cols, cell_size * flit::rows, Fade(color, 0.1));
+			Vector2 dimensions = MeasureTextEx(font, message, font_size * 2, spacing);
+			DrawTextEx(
+				font,
+				message,
+				{cell_size * flit::cols / 2 - dimensions.x / 2, cell_size * flit::rows / 2 - dimensions.y / 2},
+				font_size * 2,
+				spacing,
+				color);
 		}
 
 		// Menu

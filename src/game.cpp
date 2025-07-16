@@ -208,14 +208,14 @@ export class GameState
 			{
 				--_green_cover[neighbor];
 			}
-			--_heuristic;
+			--_green_count;
 			break;
 		case Cell::Purple:
 			for (auto neighbor : neighbors[idx])
 			{
 				--_purple_cover[neighbor];
 			}
-			++_heuristic;
+			--_purple_count;
 			break;
 		case Cell::Blue: break;
 		default: std::unreachable();
@@ -229,7 +229,8 @@ export class GameState
 		LIBASSERT_DEBUG_ASSERT(_board[idx] != Cell::Green);
 		LIBASSERT_DEBUG_ASSERT(_board[idx] != Cell::Purple);
 		LIBASSERT_DEBUG_ASSERT(cell != Cell::Empty);
-		if (_board[idx] == Cell::Blue) {
+		if (_board[idx] == Cell::Blue)
+		{
 			_hash ^= zobrist_table.cell_table[idx * 3 + std::to_underlying(Cell::Blue) - 1];
 		}
 		_board[idx] = cell;
@@ -241,14 +242,14 @@ export class GameState
 			{
 				++_green_cover[neighbor];
 			}
-			++_heuristic;
+			++_green_count;
 			break;
 		case Cell::Purple:
 			for (auto neighbor : neighbors[idx])
 			{
 				++_purple_cover[neighbor];
 			}
-			--_heuristic;
+			++_purple_count;
 			break;
 		case Cell::Blue: break;
 		default: std::unreachable();
@@ -257,14 +258,21 @@ export class GameState
 
 	// TODO: Incremental hash
 	std::uint64_t hash() const { return _hash; }
-	int heuristic() const { return (_turn == Cell::Green ? _heuristic : -_heuristic) * 1000; }
+	int heuristic() const
+	{
+		return (_turn == Cell::Green ? _green_count - _purple_count : _purple_count - _green_count) * 1000;
+	}
+
+	int green_count() const { return _green_count; }
+	int purple_count() const { return _purple_count; }
 
 	Cell turn() const { return _turn; }
 	void turn(Cell turn) { _turn = turn; }
 
   private:
 	Cell _turn = Cell::Empty;
-	int _heuristic = 0;
+	int _green_count = 0;
+	int _purple_count = 0;
 	std::uint64_t _hash = 0;
 	Cell _board[num_cells] = {};
 	std::uint8_t _green_cover[num_cells] = {};
