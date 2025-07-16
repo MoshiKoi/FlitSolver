@@ -6,12 +6,80 @@
 #include <set>
 
 import flit.game;
+import flit.bots;
 
 struct Coord
 {
 	int row;
 	int col;
 	bool operator==(Coord const &) const = default;
+};
+
+void
+bot_select_list(
+	std::unique_ptr<flit::bots::Bot> &selected_bot,
+	std::size_t &selected_bot_idx,
+	Font &font,
+	float font_size,
+	float spacing,
+	float x,
+	float y,
+	float width,
+	float height,
+	Vector2 mouse_point)
+{
+	Vector2 dimensions = MeasureTextEx(font, "Free Play", font_size, spacing);
+	DrawTextEx(
+		font,
+		"Free Play",
+		{x + width / 2 - dimensions.x / 2, y + height / 2 - dimensions.y / 2},
+		font_size,
+		spacing,
+		GRAY);
+
+	Rectangle free_play_box = {x, y, width, height};
+	if (CheckCollisionPointRec(mouse_point, free_play_box))
+	{
+		DrawRectangleRec(free_play_box, Fade(BLACK, 0.15));
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+		{
+			selected_bot = nullptr;
+			selected_bot_idx = -1;
+		}
+	}
+	if (selected_bot == nullptr)
+	{
+		DrawRectangleLinesEx(free_play_box, height * 0.05f, BLACK);
+	}
+	int idx = 0;
+	for (auto &[name, make_bot] : flit::bots::bots)
+	{
+		Vector2 dimensions = MeasureTextEx(font, name.c_str(), font_size, spacing);
+		DrawTextEx(
+			font,
+			name.c_str(),
+			{x + width / 2 - dimensions.x / 2, y + (idx + 1.5f) * height - dimensions.y / 2},
+			font_size,
+			spacing,
+			GRAY);
+
+		Rectangle bot_select_box = {x, y + (idx + 1) * height, width, height};
+		if (CheckCollisionPointRec(mouse_point, bot_select_box))
+		{
+			DrawRectangleRec(bot_select_box, Fade(BLACK, 0.15));
+
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+			{
+				selected_bot = make_bot();
+				selected_bot_idx = idx;
+			}
+		}
+		if (selected_bot_idx == idx)
+		{
+			DrawRectangleLinesEx(bot_select_box, height * 0.05f, BLACK);
+		}
+		++idx;
+	}
 };
 
 int
@@ -30,9 +98,38 @@ main()
 	std::optional<Coord> selected{};
 	std::vector<flit::Move> moves{};
 	Color highlight_color = BLACK;
+	std::unique_ptr<flit::bots::Bot> green_bot;
+	std::size_t green_bot_idx = -1;
+	std::unique_ptr<flit::bots::Bot> purple_bot;
+	std::size_t purple_bot_idx = -1;
+
+	auto const maybe_spawn_blue = [&]
+	{
+		std::uniform_int_distribution roll{1, 6};
+		if (roll(gen) == 1)
+		{
+			auto possible_spawns = game.get_possible_spawns() | std::ranges::to<std::vector>();
+			std::uniform_int_distribution<std::size_t> dist{0, possible_spawns.size() - 1};
+			game.set(possible_spawns[dist(gen)], flit::Cell::Blue);
+		}
+	};
 
 	while (!WindowShouldClose())
 	{
+		if (game.turn() == flit::Cell::Green and green_bot != nullptr)
+		{
+			flit::Move move = green_bot->choose_move(game);
+			game.commit(move);
+			maybe_spawn_blue();
+		}
+
+		if (game.turn() == flit::Cell::Purple and purple_bot != nullptr)
+		{
+			flit::Move move = purple_bot->choose_move(game);
+			game.commit(move);
+			maybe_spawn_blue();
+		}
+		
 		int const screen_height = GetScreenHeight();
 		int const screen_width = GetScreenWidth();
 
@@ -126,13 +223,7 @@ main()
 					if (CheckCollisionPointRec(mouse_point, cell_box) and IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 					{
 						game.commit(*move_iter);
-						std::uniform_int_distribution roll{1, 6};
-						if (roll(gen) == 1)
-						{
-							auto possible_spawns = game.get_possible_spawns() | std::ranges::to<std::vector>();
-							std::uniform_int_distribution<std::size_t> dist{0, possible_spawns.size() - 1};
-							game.set(possible_spawns[dist(gen)], flit::Cell::Blue);
-						}
+						maybe_spawn_blue();
 					}
 				}
 
@@ -193,6 +284,29 @@ main()
 				try_set(flit::Cell::Purple);
 			}
 		}
+
+		bot_select_list(
+			green_bot,
+			green_bot_idx,
+			font,
+			font_size,
+			spacing,
+			grid_width,
+			cell_size,
+			extra_width / 2,
+			cell_size,
+			mouse_point);
+		bot_select_list(
+			purple_bot,
+			purple_bot_idx,
+			font,
+			font_size,
+			spacing,
+			grid_width + extra_width / 2,
+			cell_size,
+			extra_width / 2,
+			cell_size,
+			mouse_point);
 
 		EndDrawing();
 	}

@@ -10,11 +10,13 @@ add_library(Repl)
 target_sources(Repl PUBLIC FILE_SET CXX_MODULES FILES repl.cpp)
 target_link_libraries(Repl PRIVATE Game Evaluator)
 
+add_subdirectory(bots)
+
 add_executable(solver main.cpp)
 target_link_libraries(solver PRIVATE Repl)
 
 add_executable(ui ui.cpp)
-target_link_libraries(ui PRIVATE Game raylib)
+target_link_libraries(ui PRIVATE Game Bots raylib)
 
 if (FLITSOLVER_BUILD_TESTS)
     add_executable(Game.Tests game.tests.cpp)
